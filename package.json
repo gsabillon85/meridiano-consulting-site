@@ -1,0 +1,9 @@
+{
+  "name": "meridiano-consulting-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve .",
+    "vercel-build": "echo 'Static site, no build needed'"
+  }
+}
