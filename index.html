@@ -2809,6 +2809,15 @@ section[id], div[id]{ scroll-margin-top: 92px; }
     try { history.replaceState(null, '', '#' + id); } catch(e){}
   }
 
+  // mostra a pagina e, se houver ancora (ex: /#partners), rola ate a secao
+  function irPara(id, ancora){
+    var alvo = ancora && document.getElementById(ancora);
+    mostrar(id, !!alvo);
+    if (!alvo) return;
+    alvo.scrollIntoView({behavior: 'smooth'});
+    try { history.replaceState(null, '', '#' + ancora); } catch(e){}
+  }
+
   // links internos trocam de pagina em vez de navegar
   document.addEventListener('click', function(e){
     var a = e.target.closest('a');
@@ -2819,8 +2828,9 @@ section[id], div[id]{ scroll-margin-top: 92px; }
       var alvo = document.querySelector(href);
       if (alvo && !alvo.closest('[data-pagina][hidden]')) return;
     }
-    var limpo = href.split('?')[0].split('#')[0];
-    if (MAPA[limpo]) { e.preventDefault(); mostrar(MAPA[limpo]); }
+    var partes = href.split('#');
+    var limpo = partes[0].split('?')[0];
+    if (MAPA[limpo]) { e.preventDefault(); irPara(MAPA[limpo], partes[1]); }
   });
 
   // ---------- assessment: calcula de verdade ----------
@@ -2873,7 +2883,12 @@ section[id], div[id]{ scroll-margin-top: 92px; }
   }
 
 
-  mostrar((location.hash || '#home').slice(1), true);
+  // na carga: o hash pode ser uma pagina (#intake) ou uma secao (#partners)
+  var inicial = (location.hash || '#home').slice(1);
+  var secao = document.getElementById(inicial);
+  var dona = secao && !document.querySelector('[data-pagina="' + inicial + '"]') && secao.closest('[data-pagina]');
+  if (dona) irPara(dona.dataset.pagina, inicial);
+  else mostrar(inicial, true);
 })();
 </script>
 
