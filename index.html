@@ -2445,6 +2445,25 @@ section[id], div[id]{ scroll-margin-top: 92px; }
         </div>
       </section>
 
+      <!-- ======================== CONTATO ======================== -->
+      <section class="bloco">
+        <h2>Where should we send your scorecard?</h2>
+        <div class="campo">
+          <label for="a-email">Work email <i>*</i></label>
+          <input type="email" id="a-email" name="email" required maxlength="254" autocomplete="email">
+        </div>
+        <div class="duas">
+          <div class="campo">
+            <label for="a-nome">Name <span class="opcional">(optional)</span></label>
+            <input type="text" id="a-nome" name="nome" maxlength="200" autocomplete="name">
+          </div>
+          <div class="campo">
+            <label for="a-empresa">Company <span class="opcional">(optional)</span></label>
+            <input type="text" id="a-empresa" name="empresa" maxlength="200" autocomplete="organization">
+          </div>
+        </div>
+      </section>
+
       <!-- ======================== SUBMIT ======================== -->
       <div class="bloco">
         <p class="sub" style="margin-bottom:20px">
@@ -2797,6 +2816,24 @@ section[id], div[id]{ scroll-margin-top: 92px; }
 (function(){
   var MAPA = {"/": "home", "/intake": "intake", "/assessment": "assessment", "/intake/thank-you": "obrigado"};
 
+  // Supabase: chave publica (publishable). A tabela so aceita insert, ver supabase/assessment_results.sql
+  var SUPABASE_URL = 'https://ujjlrckvilcpwvssfkgi.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_nptzuoBiyPrf3xI__nF4qg_-LigXAYJ';
+
+  // grava sem bloquear o visitante: desiste depois de 8s e mostra o resultado de qualquer jeito
+  function gravar(tabela, linha){
+    var envio = fetch(SUPABASE_URL + '/rest/v1/' + tabela, {
+      method: 'POST',
+      keepalive: true,
+      headers: {'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},
+      body: JSON.stringify(linha)
+    }).then(function(r){
+      if (!r.ok) return r.text().then(function(t){ throw new Error(r.status + ' ' + t); });
+    });
+    var limite = new Promise(function(_, falha){ setTimeout(function(){ falha(new Error('timeout')); }, 8000); });
+    return Promise.race([envio, limite]).catch(function(err){ console.error('Supabase:', err); });
+  }
+
   function mostrar(id, semScroll){
     var achou = false;
     document.querySelectorAll('[data-pagina]').forEach(function(p){
@@ -2838,10 +2875,12 @@ section[id], div[id]{ scroll-margin-top: 92px; }
   if (formA) {
     formA.addEventListener('submit', function(e){
       e.preventDefault();
-      var dim = [0,0,0,0];
+      var dim = [0,0,0,0], respostas = [];
       for (var i = 1; i <= 20; i++) {
         var sel = formA.querySelector('input[name=q' + i + ']:checked');
-        if (sel) dim[Math.floor((i-1)/5)] += parseInt(sel.value, 10);
+        var v = sel ? parseInt(sel.value, 10) : 0;
+        respostas.push(v);
+        dim[Math.floor((i-1)/5)] += v;
       }
       var total = dim[0]+dim[1]+dim[2]+dim[3];
       var tier, desc, rec;
@@ -2866,7 +2905,18 @@ section[id], div[id]{ scroll-margin-top: 92px; }
         document.getElementById('r-b' + d).style.width = (dim[d]/25*100) + '%';
         document.getElementById('r-n' + d).textContent = dim[d] + '/25';
       }
-      mostrar('resultado');
+
+      var campo = function(n){ var v = formA.elements[n].value.trim(); return v || null; };
+      var botao = document.getElementById('botao-enviar');
+      botao.disabled = true;
+      botao.textContent = 'Calculating your score…';
+      gravar('assessment_results', {
+        email: campo('email'), name: campo('nome'), company: campo('empresa'), answers: respostas
+      }).then(function(){
+        botao.disabled = false;
+        botao.textContent = 'See your score and recommendations';
+        mostrar('resultado');
+      });
     });
   }
 
